@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <FastLED.h>
 #include <vector>
+#include "RaveLights.hpp"
 
 // Forward declarations
 void pickColumnsRandomly(int *columns, unsigned numOfCols);
