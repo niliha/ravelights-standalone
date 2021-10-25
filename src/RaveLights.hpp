@@ -1,12 +1,14 @@
 #pragma once
 
 #include <FastLED.h>
+#include "Pattern.hpp"
+#include <vector>
 
 template <unsigned LED_ROW_COUNT, unsigned LED_COLUMN_COUNT, std::uint8_t LED_DATA_PIN = 4, EOrder RGB_ORDER = EOrder::GRB>
 class RaveLights
 {
 public:
-    RaveLights() : ledController_(FastLED.addLeds<WS2812, LED_DATA_PIN, GRB>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT)){};
+    RaveLights() : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black), ledController_(FastLED.addLeds<WS2812, LED_DATA_PIN, GRB>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT)){};
 
     void testLeds()
     {
@@ -30,11 +32,27 @@ public:
         }
     }
 
+    void addPattern(std::shared_ptr<Pattern::AbstractPattern> pattern)
+    {
+        patterns_.push_back(pattern);
+    }
+
+    void startShowLoop()
+    {
+        while (true)
+        {
+            //ledController_.clearLeds();
+            unsigned currentPatternIndex = 0;
+            unsigned delayDuration = (*patterns_[currentPatternIndex]).perform(leds_);
+        }
+    }
+
 private:
-    std::array<CRGB, LED_ROW_COUNT * LED_COLUMN_COUNT> leds_;
+    std::vector<CRGB> leds_;
     CLEDController &ledController_;
     const unsigned rowCount;
     const unsigned columnCount;
+    std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns_;
 
     bool connectToWifi(std::string wifiSsid, std::string wifiPassword)
     {

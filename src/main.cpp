@@ -123,6 +123,8 @@ unsigned getEndIndexOfColumn(unsigned column)
   return getStartIndexOfColumn(column) + NUM_ROWS - 1;
 }
 
+void lightUpColumn(CRGB color);
+
 void performPattern1()
 {
   // segments on each columns blinking up
