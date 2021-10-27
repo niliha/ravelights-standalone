@@ -8,14 +8,18 @@ template <unsigned LED_ROW_COUNT, unsigned LED_COLUMN_COUNT, std::uint8_t LED_DA
 class RaveLights
 {
 public:
-    RaveLights() : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black), ledController_(FastLED.addLeds<WS2812, LED_DATA_PIN, GRB>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT)){};
+    RaveLights() : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black)
+    {
+        FastLED.addLeds<WS2812, LED_DATA_PIN, GRB>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT);
+        testLeds();
+    }
 
     void testLeds()
     {
         std::vector<CRGB> colors{CRGB::Red, CRGB::Green, CRGB::Blue};
         for (const auto color : colors)
         {
-            ledController_.showColor(color);
+            FastLED.showColor(color);
             delay(500);
         }
     }
@@ -34,6 +38,7 @@ public:
 
     void addPattern(std::shared_ptr<Pattern::AbstractPattern> pattern)
     {
+        pattern->init(LED_ROW_COUNT, LED_COLUMN_COUNT);
         patterns_.push_back(pattern);
     }
 
@@ -41,18 +46,22 @@ public:
     {
         while (true)
         {
-            //ledController_.clearLeds();
-            unsigned currentPatternIndex = 0;
-            unsigned delayDuration = (*patterns_[currentPatternIndex]).perform(leds_);
+            FastLED.clear(true);
+            unsigned offDuration = (*patterns_[currentPattern_]).perform(leds_, currentColor_);
+            delay(offDuration);
         }
     }
 
 private:
     std::vector<CRGB> leds_;
-    CLEDController &ledController_;
-    const unsigned rowCount;
-    const unsigned columnCount;
     std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns_;
+    // pattern parameters
+    uint8_t currentBrightness_ = 255;
+    uint8_t nextBrightness_ = 255;
+    int currentColor_ = CRGB::Purple;
+    int nextColor_ = CRGB::Purple;
+    unsigned currentPattern_ = 0;
+    unsigned nextPattern_ = 0;
 
     bool connectToWifi(std::string wifiSsid, std::string wifiPassword)
     {
