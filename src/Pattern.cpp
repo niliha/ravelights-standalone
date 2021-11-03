@@ -112,4 +112,50 @@ namespace Pattern
     probabilityDistribution_ = std::discrete_distribution<>(distributionWeights.begin(), distributionWeights.end());
   }
 
+  unsigned SingleStrobeFlash::perform(std::vector<CRGB> &leds, CRGB color)
+  {
+    std::random_device random_device;
+    std::mt19937 random_number_generator(random_device());
+    unsigned numOfColsToLightUp = probabilityDistribution_(random_number_generator);
+    // Switch up color in 5 percent of cases
+    if (random(0, 100) < 5)
+    {
+      color = color ^ random(0xffffff + 1);
+    }
+    auto columnsToLightUp = sampleColumns(columnCount_);
+
+    for (unsigned i = 0; i < columnsToLightUp.size(); i++)
+    {
+      lightUpColumn(leds, columnsToLightUp[i], color);
+    }
+
+    unsigned onDuration = random(minOnDurationMs_, maxOnDurationMs_ + 1);
+    delay(onDuration);
+    FastLED.clear(true);
+    unsigned offDuration = random(minOffDurationMs_, maxOffDurationMs_ + 1);
+    return offDuration;
+  }
+
+  void SingleStrobeFlash::init(unsigned rowCount, unsigned columnCount)
+  {
+    AbstractPattern::init(rowCount, columnCount);
+    // Weights which specify the likelihood for each amount of columns {0, ..., columnCount_}
+    // that should light up at the same time
+    std::vector<int> distributionWeights;
+    if (columnCount_ >= 5)
+    {
+      distributionWeights = {1, 3, 5, 4, 6, 10};
+      while (distributionWeights.size() < columnCount_ + 1)
+      {
+        distributionWeights.push_back(2);
+      }
+    }
+    else
+    {
+      // uniform distribution
+      std::vector<int> distributionWeights(columnCount_ + 1, 1);
+    }
+    probabilityDistribution_ = std::discrete_distribution<>(distributionWeights.begin(), distributionWeights.end());
+  }
+
 } // namespace Pattern
