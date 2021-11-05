@@ -9,17 +9,16 @@ template <unsigned LED_ROW_COUNT, unsigned LED_COLUMN_COUNT, std::uint8_t LED_DA
 class RaveLights
 {
 public:
-    RaveLights(bool createAccessPoint, std::string wifiSsid, std::string wifiPassword) : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black), server_(80)
+    RaveLights() : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black), server_(80)
     {
         FastLED.addLeds<WS2812, LED_DATA_PIN, GRB>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT);
-        testLeds();
+        delay(100);
         setupRequestHandlers();
-        initWifi(createAccessPoint, wifiSsid, wifiPassword);
     }
 
     void testLeds()
     {
-        std::vector<CRGB> colors{CRGB::Red, CRGB::Green, CRGB::Blue};
+        std::vector<CRGB> colors{CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Black};
         for (const auto color : colors)
         {
             FastLED.showColor(color);
@@ -33,13 +32,22 @@ public:
         patterns_.push_back(pattern);
     }
 
+    void startWebServer()
+    {
+        server_.begin();
+    }
+
     void startShowLoop()
     {
         while (true)
         {
             FastLED.clear(true);
             unsigned offDuration = (*patterns_[currentPattern_]).perform(leds_, currentColor_);
-            delay(offDuration);
+            bool isPatternUpdated = updatePatternParameters();
+            if (!isPatternUpdated)
+            {
+                delay(offDuration);
+            }
         }
     }
 
@@ -53,19 +61,19 @@ private:
     int nextColor_ = CRGB::Purple;
     unsigned currentPattern_ = 0;
     unsigned nextPattern_ = 0;
-    // webserver
     AsyncWebServer server_;
 
-    void initWifi(bool createAccessPoint, std::string wifiSsid, std::string wifiPassword)
+    bool updatePatternParameters()
     {
-        if (createAccessPoint)
+        bool isPatternUpdated = false;
+        currentBrightness_ = nextBrightness_;
+        currentColor_ = nextColor_;
+        if (currentPattern_ != nextPattern_)
         {
-            initWifiAccessPoint(wifiSsid, wifiPassword);
+            isPatternUpdated = true;
         }
-        else
-        {
-            connectToWifi(wifiSsid, wifiPassword);
-        }
+        currentPattern_ = nextPattern_;
+        return isPatternUpdated;
     }
 
     void setupRequestHandlers()
@@ -168,36 +176,5 @@ private:
                            request->send(200, "text/plain", "OK. Color Updated to 0x" + color);
                        }
                    });
-    }
-
-    bool connectToWifi(std::string wifiSsid, std::string wifiPassword)
-    {
-        WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
-        Serial.println("Connecting to WiFi");
-        // Wait for connection
-        Serial.print("Connecting");
-        for (unsigned i = 0; i <= 20; i++)
-        {
-            if (WiFi.status() == WL_CONNECTED)
-            {
-                Serial.print("SUCCESS! IP address:  ");
-                Serial.println(WiFi.localIP());
-                return true;
-            }
-            delay(500);
-            Serial.print(".");
-        }
-        Serial.println("ERROR! Connection failed.");
-        return false;
-    }
-
-    void initWifiAccessPoint(std::string wifiSsid, std::string wifiPassword)
-    {
-        Serial.println("Setting up access point...");
-        WiFi.mode(WIFI_AP); // Changing ESP32 wifi mode to AccessPoint
-        WiFi.softAP(wifiSsid.c_str(), wifiPassword.c_str());
-        IPAddress ipAddress = WiFi.softAPIP();
-        Serial.print("AP IP address: ");
-        Serial.println(ipAddress); // Default IP is 192.168.4.1
     }
 };
