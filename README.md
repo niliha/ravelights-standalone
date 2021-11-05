@@ -2,7 +2,7 @@
 
 A light installation for raves, consisting of multiple tubes with addressable pixel strips, driven by an ESP32 microcontroller.
 
-[Demo video of RaveLights in action](docs/demo.gif)
+![Demo video of RaveLights in action](docs/demo.gif)
 
 ## Setup
 
