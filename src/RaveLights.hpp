@@ -3,6 +3,7 @@
 #include "ESPAsyncWebServer.h"
 #include "Pattern.hpp"
 #include <FastLED.h>
+#include <mutex>
 #include <vector>
 
 template <unsigned LED_ROW_COUNT, unsigned LED_COLUMN_COUNT, std::uint8_t LED_DATA_PIN = 4,
@@ -33,11 +34,20 @@ class RaveLights {
     void startShowLoop() {
         while (true) {
             FastLED.clear(true);
-            unsigned offDuration = (*patterns_[currentPattern_]).perform(leds_, currentColor_);
-            bool isPatternUpdated = updatePatternParameters();
-            if (!isPatternUpdated) {
-                delay(offDuration);
-            }
+            unsigned long offDurationMs = patterns_[currentPatternIndex]->perform(leds_, currentColor_);
+            updatePatternParameters();
+            unsigned long currentTimeMs = millis();
+            do {
+                {  // Begin of scope guarded by mutex
+                    // Leave while loop prematurely if pattern change is requested by asynchronous web server thread
+                    std::lock_guard<std::mutex> lockGuard(isPatternUpdatePendingMutex_);
+                    if (isPatternUpdatePending_) {
+                        updatePatternParameters();
+                        isPatternUpdatePending_ = false;
+                        break;
+                    }
+                }  // End of scope guarded by mutex
+            } while (millis() - currentTimeMs < offDurationMs);
         }
     }
 
@@ -45,23 +55,22 @@ class RaveLights {
     std::vector<CRGB> leds_;
     std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns_;
     // pattern parameters
-    uint8_t currentBrightness_ = 255;
-    uint8_t nextBrightness_ = 255;
-    int currentColor_ = CRGB::Purple;
-    int nextColor_ = CRGB::Purple;
-    unsigned currentPattern_ = 0;
-    unsigned nextPattern_ = 0;
+    uint8_t currentBrightness_{255};
+    uint8_t nextBrightness_{255};
+    int currentColor_{CRGB::Purple};
+    int nextColor_{CRGB::Purple};
+    unsigned currentPatternIndex{0};
+    unsigned nextPatternIndex = {0};
+    bool isPatternUpdatePending_{false};
+    // We need a mutex because the web server thread and the main thread are
+    // both writing to isPatternUpdatepending_
+    std::mutex isPatternUpdatePendingMutex_;
     AsyncWebServer server_;
 
-    bool updatePatternParameters() {
-        bool isPatternUpdated = false;
+    void updatePatternParameters() {
         currentBrightness_ = nextBrightness_;
         currentColor_ = nextColor_;
-        if (currentPattern_ != nextPattern_) {
-            isPatternUpdated = true;
-        }
-        currentPattern_ = nextPattern_;
-        return isPatternUpdated;
+        currentPatternIndex = nextPatternIndex;
     }
 
     void setupRequestHandlers() {
@@ -88,8 +97,12 @@ class RaveLights {
             if (hasError) {
                 request->send(200, "text/plain", "Error. Could not update pattern to #" + patternIndex);
             } else {
-                nextPattern_ = patternIndex;
+                nextPatternIndex = patternIndex;
                 request->send(200, "text/plain", "OK. Pattern Updated to #" + patternIndex);
+                {
+                    std::lock_guard<std::mutex> lockGuard(isPatternUpdatePendingMutex_);
+                    isPatternUpdatePending_ = true;
+                }
             }
         });
     }
