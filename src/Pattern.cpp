@@ -79,7 +79,7 @@ void RandomSegments::init(unsigned rowCount, unsigned columnCount) {
     // that should light up at the same time
     std::vector<int> distributionWeights;
     if (columnCount_ >= 5) {
-        distributionWeights = {2, 4, 8, 7, 5, 3};
+        distributionWeights = {1, 4, 8, 7, 5, 5};
         while (distributionWeights.size() < columnCount_ + 1) {
             distributionWeights.push_back(2);
         }
@@ -98,7 +98,7 @@ unsigned SingleStrobeFlash::perform(std::vector<CRGB> &leds, CRGB color) {
     if (random(0, 100) < 5) {
         color = color ^ random(0xffffff + 1);
     }
-    auto columnsToLightUp = sampleColumns(columnCount_);
+    auto columnsToLightUp = sampleColumns(numOfColsToLightUp);
 
     for (unsigned i = 0; i < columnsToLightUp.size(); i++) {
         lightUpColumn(leds, columnsToLightUp[i], color);
