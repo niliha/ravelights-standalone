@@ -1,4 +1,5 @@
 #include "Pattern.hpp"
+#include <algorithm>
 
 namespace Pattern {
 
@@ -56,6 +57,22 @@ AbstractPattern::createDiscreteProbabilityDistribution(std::vector<int> &distrib
 
 unsigned AbstractPattern::invertColor(unsigned color) { return 0xffffff - color; }
 
+bool AbstractPattern::isColumnCompletelyDark(std::vector<CRGB> &leds, unsigned columnIndex) {
+    for (unsigned i = getStartIndexOfColumn(columnIndex); i <= getEndIndexOfColumn(columnIndex); i++) {
+        if (leds[i] != CRGB(0)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+unsigned AbstractPattern::flipPixelVertically(unsigned pixelIndex, int pixelColumnIndex, bool flipPixel) {
+    if (!flipPixel) {
+        return pixelIndex;
+    }
+    return getEndIndexOfColumn(pixelColumnIndex) - pixelIndex + getStartIndexOfColumn(pixelColumnIndex);
+}
+
 /* RandomSequence */
 unsigned RandomSequence::perform(std::vector<CRGB> &leds, CRGB color) {
     auto columnsToLightUp = sampleColumns(columnCount_);
@@ -106,7 +123,7 @@ unsigned RandomSegments::perform(std::vector<CRGB> &leds, CRGB color) {
 /* SingleStrobeFlash */
 void SingleStrobeFlash::init(unsigned rowCount, unsigned columnCount) {
     AbstractPattern::init(rowCount, columnCount);
-    std::vector<int> distributionWeights = {1, 3, 5, 4, 6, 10};
+    std::vector<int> distributionWeights = {1, 3, 13, 8, 5, 3};
     probabilityDistribution_ = createDiscreteProbabilityDistribution(distributionWeights);
 }
 
@@ -132,7 +149,7 @@ unsigned SingleStrobeFlash::perform(std::vector<CRGB> &leds, CRGB color) {
 /* MultipleStrobeFlashes */
 void MultipleStrobeFlashes::init(unsigned rowCount, unsigned columnCount) {
     AbstractPattern::init(rowCount, columnCount);
-    std::vector<int> distributionWeights = {1, 3, 8, 7, 5, 3};
+    std::vector<int> distributionWeights = {1, 3, 8, 7, 2, 1};
     probabilityDistribution_ = createDiscreteProbabilityDistribution(distributionWeights);
 }
 
@@ -141,7 +158,7 @@ unsigned MultipleStrobeFlashes::perform(std::vector<CRGB> &leds, CRGB color) {
     std::mt19937 random_number_generator(random_device());
 
     unsigned numOfColsToLightUp = (*probabilityDistribution_)(random_number_generator);
-    unsigned numOfFlashes = random(1, 20);
+    unsigned numOfFlashes = random(1, 15);
     unsigned columnIndexWithInvertedColor = random(0, numOfColsToLightUp);
     for (unsigned i = 0; i < numOfFlashes; i++) {
         auto columnsToLightUp = sampleColumns(numOfColsToLightUp);
@@ -178,6 +195,62 @@ unsigned Twinkle::perform(std::vector<CRGB> &leds, CRGB color) {
     }
     FastLED.show();
     unsigned offDuration = random(0, 50);
+    return offDuration;
+}
+
+/* Comet */
+void Comet::fadeRandomPixelsToBlackBy(std::vector<CRGB> &leds, unsigned startIndex, unsigned endIndex,
+                                      uint8_t fadeAmount) {
+    for (unsigned i = startIndex; i <= endIndex; i++) {
+        if (random(0, 2) == 1) {
+            leds[i].fadeToBlackBy(fadeAmount);
+        }
+    }
+    FastLED.show();
+}
+
+unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
+    const unsigned cometSize = 4;
+    uint8_t fadeAmount = 128;  // Fade to black by 256 / fadeAmount %
+    unsigned cometStartIndex = 0;
+    unsigned onDuration = 0;
+    bool flipPattern = false;
+    if (random(0, 2) == 1) {
+        flipPattern = true;
+    }
+    unsigned numOfColumnsToLightup = 0;
+    if (columnCount_ >= 5) {
+        numOfColumnsToLightup = random(2, 4);
+    } else {
+        numOfColumnsToLightup = random(1, columnCount_ + 1);
+    }
+    auto columnsToLightUp = sampleColumns(numOfColumnsToLightup);
+    // Draw comet and its trail until the end of the column is reached
+    while (cometStartIndex + cometSize < rowCount_) {
+        // Draw comet
+        for (unsigned i = 0; i < cometSize; i++) {
+            for (auto columnIndex : columnsToLightUp) {
+                leds[flipPixelVertically(getStartIndexOfColumn(columnIndex) + cometStartIndex + i, columnIndex,
+                                         flipPattern)] = color;
+            }
+        }
+        for (auto columnIndex : columnsToLightUp) {
+            // Fade half of the LEDs one step
+            fadeRandomPixelsToBlackBy(leds, getStartIndexOfColumn(columnIndex), getEndIndexOfColumn(columnIndex),
+                                      fadeAmount);
+        }
+        delay(onDuration);
+        cometStartIndex++;
+    }
+    // Fade remaining pixels to complete darkness
+    while (!isColumnCompletelyDark(leds, columnsToLightUp[random(0, columnsToLightUp.size())])) {
+        for (auto columnIndex : columnsToLightUp) {
+            fadeRandomPixelsToBlackBy(leds, getStartIndexOfColumn(columnIndex), getEndIndexOfColumn(columnIndex),
+                                      fadeAmount);
+        }
+        delay(onDuration);
+    }
+    unsigned offDuration = random(10, 100);
     return offDuration;
 }
 

@@ -17,6 +17,7 @@ std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns{
     std::make_shared<Pattern::SingleStrobeFlash>(),      // 2
     std::make_shared<Pattern::MultipleStrobeFlashes>(),  // 3
     std::make_shared<Pattern::Twinkle>(),                // 4
+    std::make_shared<Pattern::Comet>(),                  // 5
 };
 
 // RaveLights instance

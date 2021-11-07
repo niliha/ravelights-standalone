@@ -15,19 +15,17 @@ class AbstractPattern {
    protected:
     unsigned rowCount_{0};
     unsigned columnCount_{0};
+
     // Utility functions used across patterns
     std::vector<unsigned> sampleColumns(unsigned columnCount);
-
     unsigned getStartIndexOfColumn(unsigned column);
-
     unsigned getEndIndexOfColumn(unsigned column);
-
     void lightUpColumn(std::vector<CRGB> &leds, unsigned columnIndex, CRGB color);
-
     std::shared_ptr<std::discrete_distribution<>>
     createDiscreteProbabilityDistribution(std::vector<int> &distributionWeights);
-
     unsigned invertColor(unsigned color);
+    bool isColumnCompletelyDark(std::vector<CRGB> &leds, unsigned columnIndex);
+    unsigned flipPixelVertically(unsigned pixelIndex, int pixelColumnIndex, bool flipPixel = true);
 
    private:
 };
@@ -89,4 +87,14 @@ class Twinkle : public AbstractPattern {
 
    private:
 };
+
+class Comet : public AbstractPattern {
+   public:
+    Comet() : AbstractPattern(){};
+    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
+
+   private:
+    void fadeRandomPixelsToBlackBy(std::vector<CRGB> &leds, unsigned startIndex, unsigned endIndex, uint8_t fadeAmount);
+};
+
 }  // namespace Pattern
