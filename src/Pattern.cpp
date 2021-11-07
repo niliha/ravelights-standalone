@@ -2,6 +2,7 @@
 
 namespace Pattern {
 
+/* AbstractPattern */
 void AbstractPattern::init(unsigned rowCount, unsigned columnCount) {
     rowCount_ = rowCount;
     columnCount_ = columnCount;
@@ -34,6 +35,28 @@ void AbstractPattern::lightUpColumn(std::vector<CRGB> &leds, unsigned columnInde
     FastLED.show();
 }
 
+std::shared_ptr<std::discrete_distribution<>>
+AbstractPattern::createDiscreteProbabilityDistribution(std::vector<int> &distributionWeights) {
+    // Weights which specify the likelihood for each amount of columns {0, ..., columnCount_}
+    // that should light up at the same time
+    if (distributionWeights.size() > columnCount_ + 1) {
+        while (distributionWeights.size() > columnCount_ + 1) {
+            distributionWeights.pop_back();
+        }
+    }
+    if (distributionWeights.size() < columnCount_ + 1) {
+        while (distributionWeights.size() < columnCount_ + 1) {
+            distributionWeights.push_back(1);
+        }
+    }
+    auto probabilityDistribution =
+        std::make_shared<std::discrete_distribution<>>(distributionWeights.begin(), distributionWeights.end());
+    return probabilityDistribution;
+}
+
+unsigned AbstractPattern::invertColor(unsigned color) { return 0xffffff - color; }
+
+/* RandomSequence */
 unsigned RandomSequence::perform(std::vector<CRGB> &leds, CRGB color) {
     auto columnsToLightUp = sampleColumns(columnCount_);
     for (unsigned i = 0; i < columnsToLightUp.size(); i++) {
@@ -46,10 +69,17 @@ unsigned RandomSequence::perform(std::vector<CRGB> &leds, CRGB color) {
     return offDuration;
 }
 
+/* RandomSegment */
+void RandomSegments::init(unsigned rowCount, unsigned columnCount) {
+    AbstractPattern::init(rowCount, columnCount);
+    std::vector<int> distributionWeights{1, 4, 8, 7, 5, 5};
+    probabilityDistribution_ = createDiscreteProbabilityDistribution(distributionWeights);
+}
+
 unsigned RandomSegments::perform(std::vector<CRGB> &leds, CRGB color) {
     std::random_device random_device;
     std::mt19937 random_number_generator(random_device());
-    unsigned numOfColsToLightUp = probabilityDistribution_(random_number_generator);
+    unsigned numOfColsToLightUp = (*probabilityDistribution_)(random_number_generator);
     // Switch up color in 10 percent of cases
     if (random(0, 100) < 10) {
         color = color ^ random(0xffffff + 1);
@@ -73,37 +103,25 @@ unsigned RandomSegments::perform(std::vector<CRGB> &leds, CRGB color) {
     return offDuration;
 }
 
-void RandomSegments::init(unsigned rowCount, unsigned columnCount) {
+/* SingleStrobeFlash */
+void SingleStrobeFlash::init(unsigned rowCount, unsigned columnCount) {
     AbstractPattern::init(rowCount, columnCount);
-    // Weights which specify the likelihood for each amount of columns {0, ..., columnCount_}
-    // that should light up at the same time
-    std::vector<int> distributionWeights;
-    if (columnCount_ >= 5) {
-        distributionWeights = {1, 4, 8, 7, 5, 5};
-        while (distributionWeights.size() < columnCount_ + 1) {
-            distributionWeights.push_back(2);
-        }
-    } else {
-        // uniform distribution
-        std::vector<int> distributionWeights(columnCount_ + 1, 1);
-    }
-    probabilityDistribution_ = std::discrete_distribution<>(distributionWeights.begin(), distributionWeights.end());
+    std::vector<int> distributionWeights = {1, 3, 5, 4, 6, 10};
+    probabilityDistribution_ = createDiscreteProbabilityDistribution(distributionWeights);
 }
 
 unsigned SingleStrobeFlash::perform(std::vector<CRGB> &leds, CRGB color) {
     std::random_device random_device;
     std::mt19937 random_number_generator(random_device());
-    unsigned numOfColsToLightUp = probabilityDistribution_(random_number_generator);
+    unsigned numOfColsToLightUp = (*probabilityDistribution_)(random_number_generator);
     // Switch up color in 5 percent of cases
     if (random(0, 100) < 5) {
         color = color ^ random(0xffffff + 1);
     }
     auto columnsToLightUp = sampleColumns(numOfColsToLightUp);
-
     for (unsigned i = 0; i < columnsToLightUp.size(); i++) {
         lightUpColumn(leds, columnsToLightUp[i], color);
     }
-
     unsigned onDuration = random(minOnDurationMs_, maxOnDurationMs_ + 1);
     delay(onDuration);
     FastLED.clear(true);
@@ -111,27 +129,44 @@ unsigned SingleStrobeFlash::perform(std::vector<CRGB> &leds, CRGB color) {
     return offDuration;
 }
 
-void SingleStrobeFlash::init(unsigned rowCount, unsigned columnCount) {
+/* MultipleStrobeFlashes */
+void MultipleStrobeFlashes::init(unsigned rowCount, unsigned columnCount) {
     AbstractPattern::init(rowCount, columnCount);
-    // Weights which specify the likelihood for each amount of columns {0, ..., columnCount_}
-    // that should light up at the same time
-    std::vector<int> distributionWeights;
-    if (columnCount_ >= 5) {
-        distributionWeights = {1, 3, 5, 4, 6, 10};
-        while (distributionWeights.size() < columnCount_ + 1) {
-            distributionWeights.push_back(2);
-        }
-    } else {
-        // uniform distribution
-        std::vector<int> distributionWeights(columnCount_ + 1, 1);
-    }
-    probabilityDistribution_ = std::discrete_distribution<>(distributionWeights.begin(), distributionWeights.end());
+    std::vector<int> distributionWeights = {1, 3, 8, 7, 5, 3};
+    probabilityDistribution_ = createDiscreteProbabilityDistribution(distributionWeights);
 }
 
+unsigned MultipleStrobeFlashes::perform(std::vector<CRGB> &leds, CRGB color) {
+    std::random_device random_device;
+    std::mt19937 random_number_generator(random_device());
+
+    unsigned numOfColsToLightUp = (*probabilityDistribution_)(random_number_generator);
+    unsigned numOfFlashes = random(1, 20);
+    unsigned columnIndexWithInvertedColor = random(0, numOfColsToLightUp);
+    for (unsigned i = 0; i < numOfFlashes; i++) {
+        auto columnsToLightUp = sampleColumns(numOfColsToLightUp);
+        for (unsigned columnIndex = 0; columnIndex < columnsToLightUp.size(); columnIndex++) {
+            auto colorToShow = color;
+            if (columnIndex == columnIndexWithInvertedColor) {
+                colorToShow = invertColor(color);
+            }
+            lightUpColumn(leds, columnsToLightUp[columnIndex], color);
+        }
+        FastLED.show();
+        unsigned onDuration = random(minOnDurationMs_, maxOnDurationMs_ + 1);
+        delay(onDuration);
+        FastLED.clear(true);
+        delay(onDuration);
+    }
+    FastLED.clear(true);
+    unsigned offDuration = random(minOffDurationMs_, maxOffDurationMs_ + 1);
+    return offDuration;
+}
+
+/* Twinkle */
 unsigned Twinkle::perform(std::vector<CRGB> &leds, CRGB color) {
     unsigned ledCount = rowCount_ * columnCount_;
     unsigned pixelIndex = random(ledCount);
-
     // Always light up chosen pixel
     leds[pixelIndex] = color;
     // Light up neighboring pixels with 50% probability each

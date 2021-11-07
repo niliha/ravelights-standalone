@@ -1,5 +1,6 @@
 #pragma once
 #include "FastLED.h"
+#include <memory>
 #include <random>
 #include <vector>
 
@@ -23,6 +24,11 @@ class AbstractPattern {
 
     void lightUpColumn(std::vector<CRGB> &leds, unsigned columnIndex, CRGB color);
 
+    std::shared_ptr<std::discrete_distribution<>>
+    createDiscreteProbabilityDistribution(std::vector<int> &distributionWeights);
+
+    unsigned invertColor(unsigned color);
+
    private:
 };
 
@@ -41,7 +47,7 @@ class RandomSegments : public AbstractPattern {
     void init(unsigned rowCount, unsigned columnCount) override;
 
    private:
-    std::discrete_distribution<int> probabilityDistribution_;
+    std::shared_ptr<std::discrete_distribution<int>> probabilityDistribution_;
     unsigned minOnDurationMs_{100};
     unsigned maxOnDurationMs_{500};
     unsigned minOffDurationMs_{300};
@@ -55,11 +61,25 @@ class SingleStrobeFlash : public AbstractPattern {
     void init(unsigned rowCount, unsigned columnCount) override;
 
    private:
-    std::discrete_distribution<int> probabilityDistribution_;
+    std::shared_ptr<std::discrete_distribution<int>> probabilityDistribution_;
     unsigned minOnDurationMs_{50};
     unsigned maxOnDurationMs_{200};
     unsigned minOffDurationMs_{1000};
     unsigned maxOffDurationMs_{8000};
+};
+
+class MultipleStrobeFlashes : public AbstractPattern {
+   public:
+    MultipleStrobeFlashes() : AbstractPattern(){};
+    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
+    void init(unsigned rowCount, unsigned columnCount) override;
+
+   private:
+    std::shared_ptr<std::discrete_distribution<int>> probabilityDistribution_{nullptr};
+    unsigned minOnDurationMs_{20};
+    unsigned maxOnDurationMs_{20};
+    unsigned minOffDurationMs_{700};
+    unsigned maxOffDurationMs_{5000};
 };
 
 class Twinkle : public AbstractPattern {

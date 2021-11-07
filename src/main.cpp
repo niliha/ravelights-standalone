@@ -12,10 +12,11 @@ const unsigned LED_COLUMN_COUNT = 5;
 
 // Vector of shared_ptr's to Pattern Instances that will be added to the RaveLights instance
 std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns{
-    std::make_shared<Pattern::RandomSegments>(),     // 0
-    std::make_shared<Pattern::RandomSequence>(),     // 1
-    std::make_shared<Pattern::SingleStrobeFlash>(),  // 2
-    std::make_shared<Pattern::Twinkle>()             // 3
+    std::make_shared<Pattern::RandomSegments>(),         // 0
+    std::make_shared<Pattern::RandomSequence>(),         // 1
+    std::make_shared<Pattern::SingleStrobeFlash>(),      // 2
+    std::make_shared<Pattern::MultipleStrobeFlashes>(),  // 3
+    std::make_shared<Pattern::Twinkle>(),                // 4
 };
 
 // RaveLights instance
