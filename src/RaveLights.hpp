@@ -68,7 +68,10 @@ class RaveLights {
     struct PatternConfig currentPatternConfig_;
     struct PatternConfig nextPatternConfig_;
 
-    void updatePatternConfig() { currentPatternConfig_ = nextPatternConfig_; }
+    void updatePatternConfig() {
+        currentPatternConfig_ = nextPatternConfig_;
+        FastLED.setBrightness(currentPatternConfig_.brightness);
+    }
 
     void setupRequestHandlers() {
         server_.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
