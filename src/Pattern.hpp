@@ -61,4 +61,12 @@ class SingleStrobeFlash : public AbstractPattern {
     unsigned minOffDurationMs_{1000};
     unsigned maxOffDurationMs_{8000};
 };
+
+class Twinkle : public AbstractPattern {
+   public:
+    Twinkle() : AbstractPattern(){};
+    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
+
+   private:
+};
 }  // namespace Pattern
