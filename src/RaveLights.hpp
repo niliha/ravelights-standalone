@@ -9,6 +9,13 @@
 template <unsigned LED_ROW_COUNT, unsigned LED_COLUMN_COUNT, std::uint8_t LED_DATA_PIN = 4,
           EOrder RGB_ORDER = EOrder::GRB>
 class RaveLights {
+
+    struct PatternConfig {
+        uint8_t brightness{255};
+        unsigned color{CRGB::Purple};
+        unsigned patternIndex{0};
+    };
+
    public:
     RaveLights() : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black), server_(80) {
         FastLED.addLeds<WS2812, LED_DATA_PIN, GRB>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT);
@@ -34,44 +41,34 @@ class RaveLights {
     void startShowLoop() {
         while (true) {
             FastLED.clear(true);
-            unsigned long offDurationMs = patterns_[currentPatternIndex]->perform(leds_, currentColor_);
-            updatePatternParameters();
+            unsigned long offDurationMs =
+                patterns_[currentPatternConfig_.patternIndex]->perform(leds_, currentPatternConfig_.color);
             unsigned long currentTimeMs = millis();
             do {
                 {  // Begin of scope guarded by mutex
-                    // Leave while loop prematurely if pattern change is requested by asynchronous web server thread
+                    // Leave waiting loop prematurely if pattern change is requested by asynchronous web server thread
                     std::lock_guard<std::mutex> lockGuard(isPatternUpdatePendingMutex_);
                     if (isPatternUpdatePending_) {
-                        updatePatternParameters();
+                        currentPatternConfig_.patternIndex = nextPatternConfig_.patternIndex;
                         isPatternUpdatePending_ = false;
                         break;
                     }
                 }  // End of scope guarded by mutex
             } while (millis() - currentTimeMs < offDurationMs);
+            updatePatternConfig();
         }
     }
 
    private:
     std::vector<CRGB> leds_;
     std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns_;
-    // pattern parameters
-    uint8_t currentBrightness_{255};
-    uint8_t nextBrightness_{255};
-    int currentColor_{CRGB::Purple};
-    int nextColor_{CRGB::Purple};
-    unsigned currentPatternIndex{0};
-    unsigned nextPatternIndex = {0};
     bool isPatternUpdatePending_{false};
-    // We need a mutex because the web server thread and the main thread are
-    // both writing to isPatternUpdatepending_
     std::mutex isPatternUpdatePendingMutex_;
     AsyncWebServer server_;
+    struct PatternConfig currentPatternConfig_;
+    struct PatternConfig nextPatternConfig_;
 
-    void updatePatternParameters() {
-        currentBrightness_ = nextBrightness_;
-        currentColor_ = nextColor_;
-        currentPatternIndex = nextPatternIndex;
-    }
+    void updatePatternConfig() { currentPatternConfig_ = nextPatternConfig_; }
 
     void setupRequestHandlers() {
         server_.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -95,10 +92,10 @@ class RaveLights {
                 hasError = true;
             }
             if (hasError) {
-                request->send(200, "text/plain", "Error. Could not update pattern to #" + patternIndex);
+                request->send(200, "text/plain", "Error. Could not update pattern to #" + String(patternIndex));
             } else {
-                nextPatternIndex = patternIndex;
-                request->send(200, "text/plain", "OK. Pattern Updated to #" + patternIndex);
+                nextPatternConfig_.patternIndex = patternIndex;
+                request->send(200, "text/plain", "OK. Pattern Updated to #" + String(patternIndex));
                 {
                     std::lock_guard<std::mutex> lockGuard(isPatternUpdatePendingMutex_);
                     isPatternUpdatePending_ = true;
@@ -120,16 +117,15 @@ class RaveLights {
                 hasError = true;
             }
             if (hasError) {
-                request->send(200, "text/plain", "Error. Could not update brightness to " + brightness);
+                request->send(200, "text/plain", "Error. Could not update brightness to " + String(brightness));
             } else {
-                nextBrightness_ = brightness;
-                request->send(200, "text/plain", "OK. Brightness Updated to " + brightness);
+                nextPatternConfig_.brightness = brightness;
+                request->send(200, "text/plain", "OK. Brightness Updated to " + String(brightness));
             }
         });
     }
 
     void setupColorRequestHandler() {
-
         server_.on("/color", HTTP_GET, [this](AsyncWebServerRequest *request) {
             bool hasError = false;
             int color = 0;
@@ -143,10 +139,10 @@ class RaveLights {
                 hasError = true;
             }
             if (hasError) {
-                request->send(200, "text/plain", "Error. Could not update color to " + color);
+                request->send(200, "text/plain", "Error. Could not update color to " + String(color));
             } else {
-                nextColor_ = color;
-                request->send(200, "text/plain", "OK. Color Updated to 0x" + color);
+                nextPatternConfig_.color = color;
+                request->send(200, "text/plain", "OK. Color Updated to 0x" + String(color));
             }
         });
     }
