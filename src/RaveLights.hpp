@@ -3,22 +3,24 @@
 #include "ESPAsyncWebServer.h"
 #include "Pattern.hpp"
 #include <FastLED.h>
+#include <atomic>
 #include <mutex>
+#include <thread>
 #include <vector>
 
 template <unsigned LED_ROW_COUNT, unsigned LED_COLUMN_COUNT, std::uint8_t LED_DATA_PIN = 4,
-          EOrder RGB_ORDER = EOrder::GRB>
+          EOrder RGB_ORDER = EOrder::RGB>
 class RaveLights {
 
     struct PatternConfig {
-        uint8_t brightness{255};
-        unsigned color{CRGB::Purple};
+        uint8_t brightness{127};
+        unsigned color{CRGB::Red};
         unsigned patternIndex{0};
     };
 
    public:
     RaveLights() : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black), server_(80) {
-        FastLED.addLeds<WS2812, LED_DATA_PIN, GRB>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT);
+        FastLED.addLeds<WS2812, LED_DATA_PIN, RGB_ORDER>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT);
         delay(100);
         setupRequestHandlers();
     }
@@ -38,8 +40,8 @@ class RaveLights {
 
     void startWebServer() { server_.begin(); }
 
-    void startShowLoop() {
-        while (true) {
+    void show() {
+        while (!stopShowLoop_) {
             FastLED.clear(true);
             unsigned long offDurationMs =
                 patterns_[currentPatternConfig_.patternIndex]->perform(leds_, currentPatternConfig_.color);
@@ -59,6 +61,14 @@ class RaveLights {
         }
     }
 
+    void startShowLoop() { showLoopThread_ = std::thread(&RaveLights::show, this); }
+
+    void stopShowLoop() {
+        stopShowLoop_ = true;
+        showLoopThread_.join();  // wait for thread to finish
+        stopShowLoop_ = false;
+    }
+
    private:
     std::vector<CRGB> leds_;
     std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns_;
@@ -67,6 +77,8 @@ class RaveLights {
     AsyncWebServer server_;
     struct PatternConfig currentPatternConfig_;
     struct PatternConfig nextPatternConfig_;
+    std::atomic_bool stopShowLoop_{false};
+    std::thread showLoopThread_;
 
     void updatePatternConfig() {
         currentPatternConfig_ = nextPatternConfig_;
