@@ -159,7 +159,7 @@ unsigned MultipleStrobeFlashes::perform(std::vector<CRGB> &leds, CRGB color) {
 
     unsigned numOfColsToLightUp = (*probabilityDistribution_)(random_number_generator);
     unsigned numOfFlashes = random(1, 15);
-    unsigned columnIndexWithInvertedColor = random(0, numOfColsToLightUp);
+    unsigned columnIndexWithInvertedColor = random(0, columnCount_);
     for (unsigned i = 0; i < numOfFlashes; i++) {
         auto columnsToLightUp = sampleColumns(numOfColsToLightUp);
         for (unsigned columnIndex = 0; columnIndex < columnsToLightUp.size(); columnIndex++) {
@@ -167,7 +167,7 @@ unsigned MultipleStrobeFlashes::perform(std::vector<CRGB> &leds, CRGB color) {
             if (columnIndex == columnIndexWithInvertedColor) {
                 colorToShow = invertColor(color);
             }
-            lightUpColumn(leds, columnsToLightUp[columnIndex], color);
+            lightUpColumn(leds, columnsToLightUp[columnIndex], colorToShow);
         }
         FastLED.show();
         unsigned onDuration = random(minOnDurationMs_, maxOnDurationMs_ + 1);
@@ -210,8 +210,8 @@ void Comet::fadeRandomPixelsToBlackBy(std::vector<CRGB> &leds, unsigned startInd
 }
 
 unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
-    const unsigned cometSize = 4;
-    uint8_t fadeAmount = 128;  // Fade to black by 256 / fadeAmount %
+    const unsigned cometSize = 20;
+    uint8_t fadeAmount = 200;  // Fade to black by 256 / fadeAmount %
     unsigned cometStartIndex = 0;
     unsigned onDuration = 0;
     bool flipPattern = false;
@@ -252,6 +252,11 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
     }
     unsigned offDuration = random(10, 100);
     return offDuration;
+}
+
+unsigned DebugSolidColor::perform(std::vector<CRGB> &leds, CRGB color) {
+    FastLED.showColor(color);
+    return UINT32_MAX;
 }
 
 }  // namespace Pattern

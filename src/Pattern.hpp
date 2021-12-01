@@ -97,4 +97,11 @@ class Comet : public AbstractPattern {
     void fadeRandomPixelsToBlackBy(std::vector<CRGB> &leds, unsigned startIndex, unsigned endIndex, uint8_t fadeAmount);
 };
 
+class DebugSolidColor : public AbstractPattern {
+   public:
+    DebugSolidColor() : AbstractPattern(){};
+    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
+
+   private:
+};
 }  // namespace Pattern
