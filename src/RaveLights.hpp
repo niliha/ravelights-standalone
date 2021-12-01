@@ -26,6 +26,7 @@ class RaveLights {
     }
 
     void testLeds() {
+        FastLED.setBrightness(127);
         std::vector<CRGB> colors{CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Black};
         for (const auto color : colors) {
             FastLED.showColor(color);

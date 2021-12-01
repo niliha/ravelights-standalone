@@ -104,7 +104,7 @@ unsigned RandomSegments::perform(std::vector<CRGB> &leds, CRGB color) {
     for (unsigned i = 0; i < numOfColsToLightUp; i++) {
         unsigned columnToLightUp = random(columnCount_);
 
-        unsigned pixelIntervalLength = random(4, 9);
+        unsigned pixelIntervalLength = random(rowCount_ / 8, rowCount_ / 4);
         unsigned pixelIntervalStart =
             getStartIndexOfColumn(columnToLightUp) + random(0, rowCount_ - pixelIntervalLength);
         unsigned pixelIntervalEnd = pixelIntervalStart + pixelIntervalLength;
