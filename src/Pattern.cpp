@@ -72,6 +72,14 @@ unsigned AbstractPattern::flipPixelVertically(unsigned pixelIndex, int pixelColu
     }
     return getEndIndexOfColumn(pixelColumnIndex) - pixelIndex + getStartIndexOfColumn(pixelColumnIndex);
 }
+void AbstractPattern::showWithEffectiveDelay(unsigned delayMs) {
+    unsigned long timeBeforeShow = millis();
+    FastLED.show();
+    unsigned passedTimeMs = millis() - timeBeforeShow;
+    if (delayMs > passedTimeMs) {
+        delay(delayMs - passedTimeMs);
+    }
+}
 
 /* RandomSequence */
 unsigned RandomSequence::perform(std::vector<CRGB> &leds, CRGB color) {
@@ -194,7 +202,7 @@ unsigned Twinkle::perform(std::vector<CRGB> &leds, CRGB color) {
         leds[(pixelIndex + 1) % ledCount] = color;
     }
     FastLED.show();
-    unsigned offDuration = random(0, 50);
+    unsigned offDuration = random(0, 10);
     return offDuration;
 }
 
@@ -206,14 +214,13 @@ void Comet::fadeRandomPixelsToBlackBy(std::vector<CRGB> &leds, unsigned startInd
             leds[i].fadeToBlackBy(fadeAmount);
         }
     }
-    FastLED.show();
 }
 
 unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
-    const unsigned cometSize = 20;
-    uint8_t fadeAmount = 200;  // Fade to black by 256 / fadeAmount %
+    const unsigned cometSize = rowCount_ / 8;
+    uint8_t fadeAmount = 100;  // Decrease brightness by (fadeAmount/ 256) * brightness
     unsigned cometStartIndex = 0;
-    unsigned onDuration = 0;
+    unsigned onDuration = 10;
     bool flipPattern = false;
     if (random(0, 2) == 1) {
         flipPattern = true;
@@ -230,8 +237,11 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
         // Draw comet
         for (unsigned i = 0; i < cometSize; i++) {
             for (auto columnIndex : columnsToLightUp) {
-                leds[flipPixelVertically(getStartIndexOfColumn(columnIndex) + cometStartIndex + i, columnIndex,
-                                         flipPattern)] = color;
+                for (unsigned j = 0; j < columnCount_; j++) {
+                    // Move comet columnCount_ pixels at once to increase speed
+                    leds[flipPixelVertically(getStartIndexOfColumn(columnIndex) + cometStartIndex + i + j, columnIndex,
+                                             flipPattern)] = color;
+                }
             }
         }
         for (auto columnIndex : columnsToLightUp) {
@@ -239,17 +249,19 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
             fadeRandomPixelsToBlackBy(leds, getStartIndexOfColumn(columnIndex), getEndIndexOfColumn(columnIndex),
                                       fadeAmount);
         }
-        delay(onDuration);
-        cometStartIndex++;
+        showWithEffectiveDelay(onDuration);
+        cometStartIndex += 1 + columnCount_;
     }
+
     // Fade remaining pixels to complete darkness
     while (!isColumnCompletelyDark(leds, columnsToLightUp[random(0, columnsToLightUp.size())])) {
         for (auto columnIndex : columnsToLightUp) {
             fadeRandomPixelsToBlackBy(leds, getStartIndexOfColumn(columnIndex), getEndIndexOfColumn(columnIndex),
                                       fadeAmount);
         }
-        delay(onDuration);
+        showWithEffectiveDelay(onDuration);
     }
+
     unsigned offDuration = random(10, 100);
     return offDuration;
 }

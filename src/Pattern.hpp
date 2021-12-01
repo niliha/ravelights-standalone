@@ -26,6 +26,7 @@ class AbstractPattern {
     unsigned invertColor(unsigned color);
     bool isColumnCompletelyDark(std::vector<CRGB> &leds, unsigned columnIndex);
     unsigned flipPixelVertically(unsigned pixelIndex, int pixelColumnIndex, bool flipPixel = true);
+    void showWithEffectiveDelay(unsigned delayMs);
 
    private:
 };
