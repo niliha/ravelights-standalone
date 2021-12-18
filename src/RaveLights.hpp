@@ -15,7 +15,7 @@ class RaveLights {
     struct PatternConfig {
         uint8_t brightness{127};
         unsigned color{CRGB::Red};
-        unsigned patternIndex{5};
+        unsigned patternIndex{1};
     };
 
    public:

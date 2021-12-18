@@ -20,6 +20,7 @@ std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns{
     std::make_shared<Pattern::Twinkle>(),                // 4
     std::make_shared<Pattern::Comet>(),                  // 5
     std::make_shared<Pattern::DebugSolidColor>(),        // 6
+    std::make_shared<Pattern::DebugStrobe>(),            // 7
 };
 
 // RaveLights instance

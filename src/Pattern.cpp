@@ -28,12 +28,14 @@ unsigned AbstractPattern::getStartIndexOfColumn(unsigned column) { return column
 
 unsigned AbstractPattern::getEndIndexOfColumn(unsigned column) { return getStartIndexOfColumn(column) + rowCount_ - 1; }
 
-void AbstractPattern::lightUpColumn(std::vector<CRGB> &leds, unsigned columnIndex, CRGB color) {
+void AbstractPattern::lightUpColumn(std::vector<CRGB> &leds, unsigned columnIndex, CRGB color, bool writeLeds) {
     for (std::vector<int>::size_type i = getStartIndexOfColumn(columnIndex); i <= getEndIndexOfColumn(columnIndex);
          i++) {
         leds[i] = color;
     }
-    FastLED.show();
+    if (writeLeds) {
+        FastLED.show();
+    }
 }
 
 std::shared_ptr<std::discrete_distribution<>>
@@ -72,13 +74,16 @@ unsigned AbstractPattern::flipPixelVertically(unsigned pixelIndex, int pixelColu
     }
     return getEndIndexOfColumn(pixelColumnIndex) - pixelIndex + getStartIndexOfColumn(pixelColumnIndex);
 }
-void AbstractPattern::showWithEffectiveDelay(unsigned delayMs) {
+void AbstractPattern::showForEffectiveDuration(unsigned delayMs) { delay(showAndMeasureRemainingDuration(delayMs)); }
+
+unsigned AbstractPattern::showAndMeasureRemainingDuration(unsigned delayMs) {
     unsigned long timeBeforeShow = millis();
     FastLED.show();
     unsigned passedTimeMs = millis() - timeBeforeShow;
     if (delayMs > passedTimeMs) {
-        delay(delayMs - passedTimeMs);
+        return delayMs - passedTimeMs;
     }
+    return 0;
 }
 
 /* RandomSequence */
@@ -249,7 +254,7 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
             fadeRandomPixelsToBlackBy(leds, getStartIndexOfColumn(columnIndex), getEndIndexOfColumn(columnIndex),
                                       fadeAmount);
         }
-        showWithEffectiveDelay(onDuration);
+        showForEffectiveDuration(onDuration);
         cometStartIndex += 1 + columnCount_;
     }
 
@@ -259,16 +264,28 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
             fadeRandomPixelsToBlackBy(leds, getStartIndexOfColumn(columnIndex), getEndIndexOfColumn(columnIndex),
                                       fadeAmount);
         }
-        showWithEffectiveDelay(onDuration);
+        showForEffectiveDuration(onDuration);
     }
 
     unsigned offDuration = random(10, 100);
     return offDuration;
 }
 
+/* DebugSolidColor */
 unsigned DebugSolidColor::perform(std::vector<CRGB> &leds, CRGB color) {
     FastLED.showColor(color);
     return UINT32_MAX;
 }
+/* DebugStrobe */
+unsigned DebugStrobe::perform(std::vector<CRGB> &leds, CRGB color) {
+    unsigned onDuration = 20;
+    lightUpColumn(leds, 0, color, false);
+    showForEffectiveDuration(onDuration);
+    FastLED.clear(true);
+    // return showAndMeasureRemainingDuration(onDuration);
+    return 1000;
+}
+
+unsigned Explosion::perform(std::vector<CRGB> &leds, CRGB color) {}
 
 }  // namespace Pattern

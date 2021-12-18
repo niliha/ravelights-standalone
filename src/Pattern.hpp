@@ -20,13 +20,14 @@ class AbstractPattern {
     std::vector<unsigned> sampleColumns(unsigned columnCount);
     unsigned getStartIndexOfColumn(unsigned column);
     unsigned getEndIndexOfColumn(unsigned column);
-    void lightUpColumn(std::vector<CRGB> &leds, unsigned columnIndex, CRGB color);
+    void lightUpColumn(std::vector<CRGB> &leds, unsigned columnIndex, CRGB color, bool writeLeds = true);
     std::shared_ptr<std::discrete_distribution<>>
     createDiscreteProbabilityDistribution(std::vector<int> &distributionWeights);
     unsigned invertColor(unsigned color);
     bool isColumnCompletelyDark(std::vector<CRGB> &leds, unsigned columnIndex);
     unsigned flipPixelVertically(unsigned pixelIndex, int pixelColumnIndex, bool flipPixel = true);
-    void showWithEffectiveDelay(unsigned delayMs);
+    unsigned showAndMeasureRemainingDuration(unsigned delayMs);
+    void showForEffectiveDuration(unsigned delayMs);
 
    private:
 };
@@ -101,6 +102,22 @@ class Comet : public AbstractPattern {
 class DebugSolidColor : public AbstractPattern {
    public:
     DebugSolidColor() : AbstractPattern(){};
+    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
+
+   private:
+};
+
+class DebugStrobe : public AbstractPattern {
+   public:
+    DebugStrobe() : AbstractPattern(){};
+    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
+
+   private:
+};
+
+class Explosion : public AbstractPattern {
+   public:
+    Explosion() : AbstractPattern(){};
     unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
 
    private:
