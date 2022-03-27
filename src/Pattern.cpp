@@ -1,7 +1,11 @@
 #include "Pattern.hpp"
 #include <algorithm>
+#include <cmath>
+#include <set>
 
 namespace Pattern {
+
+template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 
 /* AbstractPattern */
 void AbstractPattern::init(unsigned rowCount, unsigned columnCount) {
@@ -287,5 +291,151 @@ unsigned DebugStrobe::perform(std::vector<CRGB> &leds, CRGB color) {
 }
 
 unsigned Explosion::perform(std::vector<CRGB> &leds, CRGB color) {}
+
+/* MovingStrobe */
+MovingStrobe::MovingStrobe()
+    : AbstractPattern(), n_lights(columnCount_), n_leds(rowCount_), n(columnCount_ * rowCount_),
+      generator(random_device()) {
+
+    reset();
+}
+
+void MovingStrobe::reset() {
+    distort_chance = uniform_dist_005_02(generator);
+    light = random(n_lights);
+    frame = 0;
+    pos = max(std::lround(abs(normal_dist_0_1(generator) * n)), (long)0);
+    error = 0;
+    speed = random(1, 5 + 1);
+    length = random(5, 30 + 1);
+    max_frame = random(5, 40 + 1);
+    error_speed = max(normal_dist_2_05(generator), (double)1);
+    p_bigstrobe = 0.2;
+    p_pause = 0.5;
+    p_thin = 0.1;
+    random_direction = true;
+
+    mode_bigstrobe = true;
+    mode_pause = false;
+    mode_thinned = false;
+
+    // special mode : bigstrobe
+    if (p(p_bigstrobe)) {
+        mode_bigstrobe = true;
+        max_frame = random(2, 10);
+    }
+    // special mode : thinned LED
+    thinning = 10;
+    if (p(p_thin)) {
+        mode_thinned = true;
+    }
+    // special mode : pause
+    if (p(p_pause)) {
+        mode_pause = true;
+    }
+}
+
+unsigned MovingStrobe::perform(std::vector<CRGB> &leds, CRGB color) {
+    FastLED.clearData();
+    frame++;
+    // see if animation is finished
+    if (frame > max_frame) {
+        reset();
+    }
+    if (mode_pause) {
+        Serial.println("Returning because mode_pause=true");
+        return showAndMeasureRemainingDuration(1000 / 30);
+        //    FastLED.show();
+        //   return (30);
+    }
+    // #apply direction
+    // #!possibly broken
+    int direction = 1;
+    if (random_direction && !p(0.5)) {
+        direction = -1;
+    }
+    // #get intensity
+    double intens = min((double)1, abs(std::sin(frame * sin_factor)) + 0.1);
+    // #update position
+    pos = direction * std::lround(pos + error);
+    pos += speed;
+    error = -sgn(error) * (abs(error) + error_speed);
+    //#apply pixel range
+    Serial.print("pos: ");
+    Serial.println(pos);
+    Serial.print("light: ");
+    Serial.println(light);
+    Serial.print("n_leds: ");
+    Serial.println(n_leds);
+    Serial.print("n ");
+    Serial.println(n);
+    unsigned offset = light * n_leds;
+    Serial.print("Offset: ");
+    Serial.println(offset);
+    int a = max(0, pos) + offset;
+    int b = min(n_leds, pos + length) + offset;
+    b = max(b, 1);
+    if (a >= b) {
+        a = b - 1;
+    }
+    // #bigstrobe
+    if (mode_bigstrobe) {
+        int border1 = random(0, n);
+        int border2 = random(0, n);
+        a = min(border1, border2);
+        b = max(border1, border2);
+    }
+    //#global distortion
+    // Setup discrete probability distribution
+    std::vector<int> weights(thinning, 1);
+    std::discrete_distribution<int> discrete_dist{weights.begin(), weights.end()};
+    Serial.print("Entering loop from ");
+    Serial.print(a);
+    Serial.print(" to ");
+    Serial.println(b);
+    for (int i = a; i < b; i++) {
+        if (mode_thinned) {
+            // pick thinning-1 numbers in {0,...,thinning-1}
+            std::set<int> choices{};
+            for (int j = 0; j < thinning; j++) {
+                choices.insert(discrete_dist(generator));
+            }
+
+            if (choices.find(i % thinning) != choices.end()) {
+                continue;
+            }
+        }
+        if (p(distort_chance)) {
+            leds[i] = intensityToRgb(0, CRGB::Red);
+        } else {
+            leds[i] = intensityToRgb(intens, CRGB::Red);
+        }
+    }
+
+    Serial.println("Returning at end of perform()");
+    // FastLED.show();
+    return showAndMeasureRemainingDuration(1000 / 30);
+}
+
+bool MovingStrobe::p(double chance) { return uniform_dist_0_1(generator) < chance; }
+
+CRGB MovingStrobe::intensityToRgb(double intensity, CRGB color) {
+
+    int discrete_intensity = ((double)255) * intensity;
+    color.red = ((double)color.red) * intensity;
+    color.green = ((double)color.green) * intensity;
+    color.blue = ((double)color.blue) * intensity;
+    // return scaled_color;
+    return color;
+}
+
+void MovingStrobe::init(unsigned rowCount, unsigned columnCount) {
+    AbstractPattern::init(rowCount, columnCount);
+
+    n_lights = columnCount_;
+    n_leds = rowCount_;
+    n = columnCount_ * rowCount_;
+    reset();
+}
 
 }  // namespace Pattern

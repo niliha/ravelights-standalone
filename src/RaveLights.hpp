@@ -13,14 +13,23 @@ template <unsigned LED_ROW_COUNT, unsigned LED_COLUMN_COUNT, std::uint8_t LED_DA
 class RaveLights {
 
     struct PatternConfig {
-        uint8_t brightness{127};
+        uint8_t brightness{255};
         unsigned color{CRGB::Red};
-        unsigned patternIndex{1};
+        unsigned patternIndex{8};
     };
 
    public:
     RaveLights() : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black), server_(80) {
-        FastLED.addLeds<WS2812, LED_DATA_PIN, RGB_ORDER>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT);
+        //        FastLED.addLeds<WS2812, LED_DATA_PIN, RGB_ORDER>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT);
+        const int PIN_COUNT = 4;
+        const int PIXELS_PER_PIN = 144;
+        constexpr std::array<unsigned, PIN_COUNT> PINS = {19, 18, 22, 21};
+        FastLED.addLeds<WS2812, PINS[0], RGB_ORDER>(leds_.data(), 0 * PIXELS_PER_PIN, PIXELS_PER_PIN);
+        FastLED.addLeds<WS2812, PINS[1], RGB_ORDER>(leds_.data(), 1 * PIXELS_PER_PIN,
+                                                    PIXELS_PER_PIN);  // this is the bad
+        FastLED.addLeds<WS2812, PINS[2], RGB_ORDER>(leds_.data(), 2 * PIXELS_PER_PIN, PIXELS_PER_PIN);
+        FastLED.addLeds<WS2812, PINS[3], RGB_ORDER>(leds_.data(), 3 * PIXELS_PER_PIN, PIXELS_PER_PIN);
+
         delay(100);
         setupRequestHandlers();
     }

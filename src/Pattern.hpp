@@ -122,4 +122,49 @@ class Explosion : public AbstractPattern {
 
    private:
 };
+
+class MovingStrobe : public AbstractPattern {
+   public:
+    MovingStrobe();  // : AbstractPattern(), n_lights(columnCount_), n_leds(rowCount_), n(columnCount_ * rowCount_){};
+
+    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
+    void init(unsigned rowCount, unsigned columnCount) override;
+
+   private:
+    const std::array<double, 2> distort_chance_param{{0.05, 0.2}};
+    const double sin_factor = 2;
+
+    unsigned n_lights;
+
+    unsigned n_leds;
+    unsigned n;
+    double distort_chance;
+    std::random_device random_device;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 generator;            // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> uniform_dist_005_02{0.05, 0.2};
+    std::uniform_real_distribution<> uniform_dist_0_1{0, 1};
+    std::normal_distribution<> normal_dist_0_1{0, 1};
+    std::normal_distribution<> normal_dist_2_05{2, 0.5};
+    unsigned frame;
+    int pos;
+    unsigned light;
+    int error;
+    unsigned speed;
+    unsigned length;
+    unsigned max_frame;
+    double error_speed;
+    bool mode_bigstrobe;
+    bool mode_pause;
+    bool mode_thinned;
+    unsigned thinning;
+    double p_bigstrobe;
+    double p_pause;
+    double p_thin;
+    bool random_direction;
+
+    void reset();
+    bool p(double chance);
+    CRGB intensityToRgb(double intensity, CRGB color);
+};
+
 }  // namespace Pattern
