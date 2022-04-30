@@ -14,11 +14,8 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
     const unsigned cometSize = rowCount_ / 8;
     uint8_t fadeAmount = 100;  // Decrease brightness by (fadeAmount/ 256) * brightness
     unsigned cometStartIndex = 0;
-    unsigned onDuration = 10;
-    bool flipPattern = false;
-    if (random(0, 2) == 1) {
-        flipPattern = true;
-    }
+    unsigned onDuration = 30;
+    bool flipPattern = sampleBernoulli(0.5);
     unsigned numOfColumnsToLightup = 0;
     if (columnCount_ >= 5) {
         numOfColumnsToLightup = random(2, 4);
@@ -31,11 +28,8 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
         // Draw comet
         for (unsigned i = 0; i < cometSize; i++) {
             for (auto columnIndex : columnsToLightUp) {
-                for (unsigned j = 0; j < columnCount_; j++) {
-                    // Move comet columnCount_ pixels at once to increase speed
-                    leds[flipPixelVertically(getStartIndexOfColumn(columnIndex) + cometStartIndex + i + j, columnIndex,
-                                             flipPattern)] = color;
-                }
+                leds[flipPixelVertically(getStartIndexOfColumn(columnIndex) + cometStartIndex + i, columnIndex,
+                                         flipPattern)] = color;
             }
         }
         for (auto columnIndex : columnsToLightUp) {
@@ -56,7 +50,7 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
         showForEffectiveDuration(onDuration);
     }
 
-    unsigned offDuration = random(10, 100);
+    unsigned offDuration = random(10, 1000);
     return offDuration;
 }
 };  // namespace Pattern
