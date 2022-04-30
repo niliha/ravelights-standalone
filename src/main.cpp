@@ -11,7 +11,6 @@
 #include "patterns/Twinkle.hpp"
 
 #include <Arduino.h>
-#include <FastLED.h>
 #include <esp_pthread.h>
 
 /* BEGIN USER CONFIG */

@@ -2,6 +2,7 @@
 
 #include "ESPAsyncWebServer.h"
 #include "patterns/AbstractPattern.hpp"
+#define FASTLED_ESP32_I2S  // Alternative parallel output driver
 #include <FastLED.h>
 #include <atomic>
 #include <mutex>
@@ -25,10 +26,16 @@ template <int PIN_COUNT, const std::array<int, PIN_COUNT> &PINS, EOrder RGB_ORDE
     }
 
     void testLeds() {
-        FastLED.setBrightness(127);
-        std::vector<CRGB> colors{CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Black};
+        std::vector<CRGB> colors{CRGB::Red, CRGB::Green, CRGB::Blue};
         for (const auto color : colors) {
+            auto timeBefore = millis();
             FastLED.showColor(color);
+            auto passedTime = millis() - timeBefore;
+            Serial.print("show() took ");
+            Serial.print(passedTime);
+            Serial.println(" ms");
+            delay(500);
+            FastLED.clear(true);
             delay(500);
         }
     }
@@ -110,7 +117,9 @@ template <int PIN_COUNT, const std::array<int, PIN_COUNT> &PINS, EOrder RGB_ORDE
             pixelOffset += lightsPerPin[3] * PIXELS_PER_LIGHT_;
         }
         // Set maximum brightness (0 - 255)
-        FastLED.setBrightness(MAX_BRIGHTNESS_);
+        // Currently the leds don't work well at highest brightness
+        uint8_t safe_brightness = min(MAX_BRIGHTNESS_, (uint8_t)200);
+        FastLED.setBrightness(safe_brightness);
     }
 
     void updatePatternConfig() {

@@ -1,5 +1,6 @@
 #pragma once
 
+#define FASTLED_ESP32_I2S  // Alternative parallel output driver
 #include "FastLED.h"
 #include <memory>
 #include <random>
