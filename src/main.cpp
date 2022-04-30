@@ -14,9 +14,19 @@
 #include <FastLED.h>
 #include <esp_pthread.h>
 
-// Must be known at compile time for FastLED
-const unsigned LED_ROW_COUNT = 144;
-const unsigned LED_COLUMN_COUNT = 10;
+/* BEGIN USER CONFIG */
+// Specify the maximum number of pins to which lights are to be connected in a specific scenario.
+// Right now the PixelDriver class is fixed to 4.
+const int MAX_PIN_COUNT = 4;
+// Specify the amount of individually addressable pixels per "light"
+const int PIXELS_PER_LIGHT = 144;
+// Specify the GPIO pins to which lights are connected.
+extern constexpr std::array<int, MAX_PIN_COUNT> PINS = {19, 18, 22, 21};
+// For each pin, specify how many lights are connected.
+// If there are no lights connected to a specific, set lightCount to 0.
+std::array<int, MAX_PIN_COUNT> lightsPerPin = {5, 5, 0, 0};
+const EOrder RGB_ORDER = EOrder::RGB;
+/* END USER CONFIG */
 
 // Vector of shared_ptr's to Pattern Instances that will be added to the RaveLights instance
 std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns{
@@ -28,9 +38,6 @@ std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns{
     std::make_shared<Pattern::Comet>(),                  // 5
     std::make_shared<Pattern::MovingStrobe>(),           // 6
 };
-
-// RaveLights instance
-RaveLights<LED_ROW_COUNT, LED_COLUMN_COUNT> raveLights;
 
 void setup() {
     Serial.begin(115200);
@@ -50,6 +57,8 @@ void setup() {
     // esp_random() produces true random number if wifi or bluetooth is running.
     randomSeed(esp_random());
 
+    // Setup and start RaveLights
+    RaveLights<MAX_PIN_COUNT, PINS, RGB_ORDER> raveLights(lightsPerPin, PIXELS_PER_LIGHT);
     for (auto &pattern : patterns) {
         raveLights.addPattern(pattern);
     }
@@ -62,6 +71,9 @@ void setup() {
 
     Serial.println("Starting show loop...");
     raveLights.startShowLoop();
+
+    while (true) {
+    }
 }
 
 void loop() {}

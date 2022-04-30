@@ -8,9 +8,7 @@
 #include <thread>
 #include <vector>
 
-template <unsigned LED_ROW_COUNT, unsigned LED_COLUMN_COUNT, std::uint8_t LED_DATA_PIN = 4,
-          EOrder RGB_ORDER = EOrder::RGB>
-class RaveLights {
+template <int PIN_COUNT, const std::array<int, PIN_COUNT> &PINS, EOrder RGB_ORDER = RGB> class RaveLights {
 
     struct PatternConfig {
         uint8_t brightness{255};
@@ -19,18 +17,10 @@ class RaveLights {
     };
 
    public:
-    RaveLights() : leds_(LED_ROW_COUNT * LED_COLUMN_COUNT, CRGB::Black), server_(80) {
-        //        FastLED.addLeds<WS2812, LED_DATA_PIN, RGB_ORDER>(leds_.data(), LED_ROW_COUNT * LED_COLUMN_COUNT);
-        const int PIN_COUNT = 4;
-        const int PIXELS_PER_PIN = 144;
-        constexpr std::array<unsigned, PIN_COUNT> PINS = {19, 18, 22, 21};
-        FastLED.addLeds<WS2812, PINS[0], RGB_ORDER>(leds_.data(), 0 * PIXELS_PER_PIN, 5 * PIXELS_PER_PIN);
-        FastLED.addLeds<WS2812, PINS[1], RGB_ORDER>(leds_.data(), 5 * PIXELS_PER_PIN,
-                                                    5 * PIXELS_PER_PIN);  // this is the bad
-        // FastLED.addLeds<WS2812, PINS[2], RGB_ORDER>(leds_.data(), 2 * PIXELS_PER_PIN, PIXELS_PER_PIN);
-        // FastLED.addLeds<WS2812, PINS[3], RGB_ORDER>(leds_.data(), 3 * PIXELS_PER_PIN, PIXELS_PER_PIN);
-
-        delay(100);
+    RaveLights(const std::array<int, PIN_COUNT> &lightsPerPin, int pixelsPerLight = 144, uint8_t maxBrightness = 255)
+        : PIXELS_PER_LIGHT_(pixelsPerLight), MAX_BRIGHTNESS_(maxBrightness), server_(80) {
+        static_assert(PIN_COUNT == 4, "setupFastLed() is currently hardcoded to handle exactly 4 pins!");
+        setupFastled(lightsPerPin);
         setupRequestHandlers();
     }
 
@@ -44,7 +34,7 @@ class RaveLights {
     }
 
     void addPattern(std::shared_ptr<Pattern::AbstractPattern> pattern) {
-        pattern->init(LED_ROW_COUNT, LED_COLUMN_COUNT);
+        pattern->init(PIXELS_PER_LIGHT_, LIGHT_COUNT_);
         patterns_.push_back(pattern);
     }
 
@@ -80,6 +70,11 @@ class RaveLights {
     }
 
    private:
+    const int PIXELS_PER_LIGHT_;
+    const uint8_t MAX_BRIGHTNESS_;
+    int PIXEL_COUNT_;
+    int LIGHT_COUNT_;
+
     std::vector<CRGB> leds_;
     std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns_;
     bool isPatternUpdatePending_{false};
@@ -89,6 +84,34 @@ class RaveLights {
     struct PatternConfig nextPatternConfig_;
     std::atomic_bool stopShowLoop_{false};
     std::thread showLoopThread_;
+
+    void setupFastled(const std::array<int, PIN_COUNT> &lightsPerPin) {
+        // Allocate led buffer
+        LIGHT_COUNT_ = std::accumulate(lightsPerPin.begin(), lightsPerPin.end(), 0);
+        PIXEL_COUNT_ = LIGHT_COUNT_ * PIXELS_PER_LIGHT_;
+        leds_.resize(PIXEL_COUNT_);
+        // We can't use a loop here since addLeds() template parameters must be known at
+        // compile-time
+        int pixelOffset = 0;
+        if (lightsPerPin[0] > 0) {
+            FastLED.addLeds<WS2812, PINS[0], RGB_ORDER>(leds_.data(), pixelOffset, lightsPerPin[0] * PIXELS_PER_LIGHT_);
+            pixelOffset += lightsPerPin[0] * PIXELS_PER_LIGHT_;
+        }
+        if (lightsPerPin[1] > 0) {
+            FastLED.addLeds<WS2812, PINS[1], RGB_ORDER>(leds_.data(), pixelOffset, lightsPerPin[1] * PIXELS_PER_LIGHT_);
+            pixelOffset += lightsPerPin[1] * PIXELS_PER_LIGHT_;
+        }
+        if (lightsPerPin[2] > 0) {
+            FastLED.addLeds<WS2812, PINS[2], RGB_ORDER>(leds_.data(), pixelOffset, lightsPerPin[2] * PIXELS_PER_LIGHT_);
+            pixelOffset += lightsPerPin[2] * PIXELS_PER_LIGHT_;
+        }
+        if (lightsPerPin[3] > 0) {
+            FastLED.addLeds<WS2812, PINS[3], RGB_ORDER>(leds_.data(), pixelOffset, lightsPerPin[3] * PIXELS_PER_LIGHT_);
+            pixelOffset += lightsPerPin[3] * PIXELS_PER_LIGHT_;
+        }
+        // Set maximum brightness (0 - 255)
+        FastLED.setBrightness(MAX_BRIGHTNESS_);
+    }
 
     void updatePatternConfig() {
         currentPatternConfig_ = nextPatternConfig_;
