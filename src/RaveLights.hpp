@@ -14,8 +14,8 @@ class RaveLights {
 
     struct PatternConfig {
         uint8_t brightness{255};
-        unsigned color{CRGB::Red};
-        unsigned patternIndex{8};
+        unsigned color{CRGB::Purple};
+        unsigned patternIndex{6};
     };
 
    public:
@@ -24,11 +24,11 @@ class RaveLights {
         const int PIN_COUNT = 4;
         const int PIXELS_PER_PIN = 144;
         constexpr std::array<unsigned, PIN_COUNT> PINS = {19, 18, 22, 21};
-        FastLED.addLeds<WS2812, PINS[0], RGB_ORDER>(leds_.data(), 0 * PIXELS_PER_PIN, PIXELS_PER_PIN);
-        FastLED.addLeds<WS2812, PINS[1], RGB_ORDER>(leds_.data(), 1 * PIXELS_PER_PIN,
-                                                    PIXELS_PER_PIN);  // this is the bad
-        FastLED.addLeds<WS2812, PINS[2], RGB_ORDER>(leds_.data(), 2 * PIXELS_PER_PIN, PIXELS_PER_PIN);
-        FastLED.addLeds<WS2812, PINS[3], RGB_ORDER>(leds_.data(), 3 * PIXELS_PER_PIN, PIXELS_PER_PIN);
+        FastLED.addLeds<WS2812, PINS[0], RGB_ORDER>(leds_.data(), 0 * PIXELS_PER_PIN, 5 * PIXELS_PER_PIN);
+        FastLED.addLeds<WS2812, PINS[1], RGB_ORDER>(leds_.data(), 5 * PIXELS_PER_PIN,
+                                                    5 * PIXELS_PER_PIN);  // this is the bad
+        // FastLED.addLeds<WS2812, PINS[2], RGB_ORDER>(leds_.data(), 2 * PIXELS_PER_PIN, PIXELS_PER_PIN);
+        // FastLED.addLeds<WS2812, PINS[3], RGB_ORDER>(leds_.data(), 3 * PIXELS_PER_PIN, PIXELS_PER_PIN);
 
         delay(100);
         setupRequestHandlers();
@@ -52,7 +52,7 @@ class RaveLights {
 
     void show() {
         while (!stopShowLoop_) {
-            FastLED.clear(true);
+            FastLED.clear(false);
             unsigned long offDurationMs =
                 patterns_[currentPatternConfig_.patternIndex]->perform(leds_, currentPatternConfig_.color);
             unsigned long currentTimeMs = millis();

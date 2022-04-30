@@ -11,6 +11,8 @@ template <typename T> int sgn(T val) { return (T(0) < val) - (val < T(0)); }
 void AbstractPattern::init(unsigned rowCount, unsigned columnCount) {
     rowCount_ = rowCount;
     columnCount_ = columnCount;
+    // esp_random() provides true random value if either WIFI or bluetooth is running
+    randomGenerator_.seed(esp_random());
 }
 
 std::vector<unsigned> AbstractPattern::sampleColumns(unsigned amountOfRowsToSample) {
@@ -89,7 +91,25 @@ unsigned AbstractPattern::showAndMeasureRemainingDuration(unsigned delayMs) {
     }
     return 0;
 }
+void AbstractPattern::indexToCoordinates(unsigned pixelIndex, unsigned &columnIndex, unsigned &rowIndex) {
+    columnIndex = pixelIndex / columnCount_;
+    rowIndex = pixelIndex % columnCount_;
+}
+unsigned AbstractPattern::coordinatesToIndex(unsigned columnIndex, unsigned rowIndex) {
+    return columnIndex * rowCount_ + rowIndex;
+}
 
+bool AbstractPattern::sampleBernoulli(double probability) {
+    std::bernoulli_distribution bernoulliDistr(probability);
+    return bernoulliDistr(randomGenerator_);
+}
+
+CRGB AbstractPattern::intensityToRgb(double intensity, CRGB color) {
+    color.red = ((double)color.red) * intensity;
+    color.green = ((double)color.green) * intensity;
+    color.blue = ((double)color.blue) * intensity;
+    return color;
+}
 /* RandomSequence */
 unsigned RandomSequence::perform(std::vector<CRGB> &leds, CRGB color) {
     auto columnsToLightUp = sampleColumns(columnCount_);
@@ -275,63 +295,39 @@ unsigned Comet::perform(std::vector<CRGB> &leds, CRGB color) {
     return offDuration;
 }
 
-/* DebugSolidColor */
-unsigned DebugSolidColor::perform(std::vector<CRGB> &leds, CRGB color) {
-    FastLED.showColor(color);
-    return UINT32_MAX;
-}
-/* DebugStrobe */
-unsigned DebugStrobe::perform(std::vector<CRGB> &leds, CRGB color) {
-    unsigned onDuration = 20;
-    lightUpColumn(leds, 0, color, false);
-    showForEffectiveDuration(onDuration);
-    FastLED.clear(true);
-    // return showAndMeasureRemainingDuration(onDuration);
-    return 1000;
-}
-
-unsigned Explosion::perform(std::vector<CRGB> &leds, CRGB color) {}
-
 /* MovingStrobe */
-MovingStrobe::MovingStrobe()
-    : AbstractPattern(), n_lights(columnCount_), n_leds(rowCount_), n(columnCount_ * rowCount_),
-      generator(random_device()) {
-
+MovingStrobe::MovingStrobe(double p_bigstrobe, double p_pause, double p_thin)
+    : AbstractPattern(), bigStrobeProb_(p_bigstrobe), pauseProb_(p_pause), thinningProb_(p_thin) {
     reset();
 }
 
 void MovingStrobe::reset() {
-    distort_chance = uniform_dist_005_02(generator);
-    light = random(n_lights);
+    distortionProb_ = uniformDist_005_02_(randomGenerator_);
+    light = random(lightCount_);
     frame = 0;
-    pos = max(std::lround(abs(normal_dist_0_1(generator) * n)), (long)0);
+    pos = max(std::lround(abs(normalDist_0_1_(randomGenerator_) * pixelCount_)), (long)0);
     error = 0;
     speed = random(1, 5 + 1);
     length = random(5, 30 + 1);
-    max_frame = random(5, 40 + 1);
-    error_speed = max(normal_dist_2_05(generator), (double)1);
-    p_bigstrobe = 0.2;
-    p_pause = 0.5;
-    p_thin = 0.1;
-    random_direction = true;
-
-    mode_bigstrobe = true;
-    mode_pause = false;
-    mode_thinned = false;
+    maxFrameCount_ = random(5, 25 + 1);
+    errorSpeed_ = max(normalDist_2_05_(randomGenerator_), (double)1);
 
     // special mode : bigstrobe
-    if (p(p_bigstrobe)) {
-        mode_bigstrobe = true;
-        max_frame = random(2, 10);
+    doBigStrobe_ = false;
+    if (sampleBernoulli(bigStrobeProb_)) {
+        doBigStrobe_ = true;
+        maxFrameCount_ = random(2, 10);
     }
     // special mode : thinned LED
-    thinning = 10;
-    if (p(p_thin)) {
-        mode_thinned = true;
+    doThinning_ = false;
+    thinningAmount_ = 10;
+    if (sampleBernoulli(thinningProb_)) {
+        doThinning_ = true;
     }
     // special mode : pause
-    if (p(p_pause)) {
-        mode_pause = true;
+    doPause_ = false;
+    if (sampleBernoulli(pauseProb_)) {
+        doPause_ = true;
     }
 }
 
@@ -339,103 +335,71 @@ unsigned MovingStrobe::perform(std::vector<CRGB> &leds, CRGB color) {
     FastLED.clearData();
     frame++;
     // see if animation is finished
-    if (frame > max_frame) {
+    if (frame > maxFrameCount_) {
         reset();
     }
-    if (mode_pause) {
-        Serial.println("Returning because mode_pause=true");
+    if (doPause_) {
         return showAndMeasureRemainingDuration(1000 / 30);
-        //    FastLED.show();
-        //   return (30);
     }
-    // #apply direction
-    // #!possibly broken
+    // apply direction
+    // !possibly broken
     int direction = 1;
-    if (random_direction && !p(0.5)) {
+    if (doRandomDirection_ && !sampleBernoulli(0.5)) {
         direction = -1;
     }
-    // #get intensity
-    double intens = min((double)1, abs(std::sin(frame * sin_factor)) + 0.1);
-    // #update position
+    // get intensity
+    double intens = min((double)1, abs(std::sin(frame * sinFactor_)) + 0.1);
+    // update position
     pos = direction * std::lround(pos + error);
     pos += speed;
-    error = -sgn(error) * (abs(error) + error_speed);
-    //#apply pixel range
-    Serial.print("pos: ");
-    Serial.println(pos);
-    Serial.print("light: ");
-    Serial.println(light);
-    Serial.print("n_leds: ");
-    Serial.println(n_leds);
-    Serial.print("n ");
-    Serial.println(n);
-    unsigned offset = light * n_leds;
-    Serial.print("Offset: ");
-    Serial.println(offset);
+    error = -sgn(error) * (abs(error) + errorSpeed_);
+    const unsigned offset = light * pixelsPerLight_;
     int a = max(0, pos) + offset;
-    int b = min(n_leds, pos + length) + offset;
+    int b = min(pixelsPerLight_, pos + length) + offset;
     b = max(b, 1);
     if (a >= b) {
         a = b - 1;
     }
-    // #bigstrobe
-    if (mode_bigstrobe) {
-        int border1 = random(0, n);
-        int border2 = random(0, n);
+    // bigstrobe
+    if (doBigStrobe_) {
+        int border1 = random(0, pixelCount_);
+        int border2 = random(0, pixelCount_);
         a = min(border1, border2);
         b = max(border1, border2);
     }
-    //#global distortion
-    // Setup discrete probability distribution
-    std::vector<int> weights(thinning, 1);
-    std::discrete_distribution<int> discrete_dist{weights.begin(), weights.end()};
-    Serial.print("Entering loop from ");
-    Serial.print(a);
-    Serial.print(" to ");
-    Serial.println(b);
+    // thinning and global distortion
+    //  Setup discrete probability distribution
+    std::vector<int> weights(thinningAmount_, 1);
+    std::discrete_distribution<int> discreteDist{weights.begin(), weights.end()};
     for (int i = a; i < b; i++) {
-        if (mode_thinned) {
+        if (doThinning_) {
             // pick thinning-1 numbers in {0,...,thinning-1}
             std::set<int> choices{};
-            for (int j = 0; j < thinning; j++) {
-                choices.insert(discrete_dist(generator));
+            for (int j = 0; j < thinningAmount_; j++) {
+                choices.insert(discreteDist(randomGenerator_));
             }
 
-            if (choices.find(i % thinning) != choices.end()) {
+            if (choices.find(i % thinningAmount_) != choices.end()) {
                 continue;
             }
         }
-        if (p(distort_chance)) {
-            leds[i] = intensityToRgb(0, CRGB::Red);
+        if (sampleBernoulli(distortionProb_)) {
+            leds[i] = intensityToRgb(0, color);
         } else {
-            leds[i] = intensityToRgb(intens, CRGB::Red);
+            leds[i] = intensityToRgb(intens, color);
         }
     }
-
-    Serial.println("Returning at end of perform()");
-    // FastLED.show();
     return showAndMeasureRemainingDuration(1000 / 30);
-}
-
-bool MovingStrobe::p(double chance) { return uniform_dist_0_1(generator) < chance; }
-
-CRGB MovingStrobe::intensityToRgb(double intensity, CRGB color) {
-
-    int discrete_intensity = ((double)255) * intensity;
-    color.red = ((double)color.red) * intensity;
-    color.green = ((double)color.green) * intensity;
-    color.blue = ((double)color.blue) * intensity;
-    // return scaled_color;
-    return color;
 }
 
 void MovingStrobe::init(unsigned rowCount, unsigned columnCount) {
     AbstractPattern::init(rowCount, columnCount);
-
-    n_lights = columnCount_;
-    n_leds = rowCount_;
-    n = columnCount_ * rowCount_;
+    lightCount_ = columnCount_;
+    pixelsPerLight_ = rowCount_;
+    pixelCount_ = columnCount_ * rowCount_;
     reset();
 }
 
 }  // namespace Pattern
+
+uint16_t XY(uint8_t x, uint8_t y) { return x * y + y; }

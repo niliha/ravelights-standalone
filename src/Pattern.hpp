@@ -15,6 +15,7 @@ class AbstractPattern {
    protected:
     unsigned rowCount_{0};
     unsigned columnCount_{0};
+    std::default_random_engine randomGenerator_;
 
     // Utility functions used across patterns
     std::vector<unsigned> sampleColumns(unsigned columnCount);
@@ -28,6 +29,10 @@ class AbstractPattern {
     unsigned flipPixelVertically(unsigned pixelIndex, int pixelColumnIndex, bool flipPixel = true);
     unsigned showAndMeasureRemainingDuration(unsigned delayMs);
     void showForEffectiveDuration(unsigned delayMs);
+    void indexToCoordinates(unsigned pixelIndex, unsigned &columnIndex, unsigned &rowIndex);
+    unsigned coordinatesToIndex(unsigned columnIndex, unsigned rowIndex);
+    bool sampleBernoulli(double chance);
+    CRGB intensityToRgb(double intensity, CRGB color);
 
    private:
 };
@@ -99,72 +104,48 @@ class Comet : public AbstractPattern {
     void fadeRandomPixelsToBlackBy(std::vector<CRGB> &leds, unsigned startIndex, unsigned endIndex, uint8_t fadeAmount);
 };
 
-class DebugSolidColor : public AbstractPattern {
-   public:
-    DebugSolidColor() : AbstractPattern(){};
-    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
-
-   private:
-};
-
-class DebugStrobe : public AbstractPattern {
-   public:
-    DebugStrobe() : AbstractPattern(){};
-    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
-
-   private:
-};
-
-class Explosion : public AbstractPattern {
-   public:
-    Explosion() : AbstractPattern(){};
-    unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
-
-   private:
-};
-
 class MovingStrobe : public AbstractPattern {
    public:
-    MovingStrobe();  // : AbstractPattern(), n_lights(columnCount_), n_leds(rowCount_), n(columnCount_ * rowCount_){};
+    MovingStrobe(double p_bigstrobe = 0.3, double p_pause = 0.5,
+                 double p_thin = 0.4);  // : AbstractPattern(), n_lights(columnCount_), n_leds(rowCount_),
+                                        // n(columnCount_ * rowCount_){};
 
     unsigned perform(std::vector<CRGB> &leds, CRGB color) override;
     void init(unsigned rowCount, unsigned columnCount) override;
 
    private:
-    const std::array<double, 2> distort_chance_param{{0.05, 0.2}};
-    const double sin_factor = 2;
+    unsigned lightCount_;
+    unsigned pixelsPerLight_;
+    unsigned pixelCount_;
 
-    unsigned n_lights;
+    const double bigStrobeProb_;
+    const double pauseProb_;
+    const double thinningProb_;
+    double distortionProb_;
+    const bool doRandomDirection_{true};
 
-    unsigned n_leds;
-    unsigned n;
-    double distort_chance;
-    std::random_device random_device;  // Will be used to obtain a seed for the random number engine
-    std::mt19937 generator;            // Standard mersenne_twister_engine seeded with rd()
-    std::uniform_real_distribution<> uniform_dist_005_02{0.05, 0.2};
-    std::uniform_real_distribution<> uniform_dist_0_1{0, 1};
-    std::normal_distribution<> normal_dist_0_1{0, 1};
-    std::normal_distribution<> normal_dist_2_05{2, 0.5};
+    const std::array<double, 2> distortChanceParam_{{0.05, 0.2}};
+    const double sinFactor_ = 2;
+
+    std::uniform_real_distribution<> uniformDist_005_02_{0.05, 0.2};
+    std::uniform_real_distribution<> uniformDist_0_1_{0, 1};
+    std::normal_distribution<> normalDist_0_1_{0, 1};
+    std::normal_distribution<> normalDist_2_05_{2, 0.5};
+
     unsigned frame;
     int pos;
     unsigned light;
     int error;
     unsigned speed;
     unsigned length;
-    unsigned max_frame;
-    double error_speed;
-    bool mode_bigstrobe;
-    bool mode_pause;
-    bool mode_thinned;
-    unsigned thinning;
-    double p_bigstrobe;
-    double p_pause;
-    double p_thin;
-    bool random_direction;
+    unsigned maxFrameCount_;
+    double errorSpeed_;
+    bool doBigStrobe_;
+    bool doPause_;
+    bool doThinning_;
+    unsigned thinningAmount_;
 
     void reset();
-    bool p(double chance);
-    CRGB intensityToRgb(double intensity, CRGB color);
 };
 
 }  // namespace Pattern
