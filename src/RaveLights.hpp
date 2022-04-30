@@ -14,7 +14,7 @@ template <int PIN_COUNT, const std::array<int, PIN_COUNT> &PINS, EOrder RGB_ORDE
     struct PatternConfig {
         uint8_t brightness{255};
         unsigned color{CRGB::Purple};
-        unsigned patternIndex{6};
+        unsigned patternIndex{0};
     };
 
    public:

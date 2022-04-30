@@ -11,8 +11,8 @@ unsigned SingleStrobeFlash::perform(std::vector<CRGB> &leds, CRGB color) {
     std::random_device random_device;
     std::mt19937 random_number_generator(random_device());
     unsigned numOfColsToLightUp = (*probabilityDistribution_)(random_number_generator);
-    // Switch up color in 5 percent of cases
-    if (random(0, 100) < 5) {
+    // Switch up color in 10 percent of cases
+    if (sampleBernoulli(0.1)) {
         color = color ^ random(0xffffff + 1);
     }
     auto columnsToLightUp = sampleColumns(numOfColsToLightUp);

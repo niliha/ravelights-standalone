@@ -11,10 +11,9 @@ class MultipleStrobeFlashes : public AbstractPattern {
 
    private:
     std::shared_ptr<std::discrete_distribution<int>> probabilityDistribution_{nullptr};
-    unsigned minOnDurationMs_{20};
-    unsigned maxOnDurationMs_{20};
+    unsigned minOnDurationMs_{5};
+    unsigned maxOnDurationMs_{15};
     unsigned minOffDurationMs_{700};
-    unsigned maxOffDurationMs_{5000};
+    unsigned maxOffDurationMs_{8000};
 };
 };  // namespace Pattern
-

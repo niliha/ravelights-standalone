@@ -2,6 +2,7 @@
 #include "network/Network.hpp"
 #include "network/WifiCredentials.hpp"
 #include "patterns/AbstractPattern.hpp"
+#include "patterns/Blackout.hpp"
 #include "patterns/Comet.hpp"
 #include "patterns/MovingStrobe.hpp"
 #include "patterns/MultipleStrobeFlashes.hpp"
@@ -36,6 +37,8 @@ std::vector<std::shared_ptr<Pattern::AbstractPattern>> patterns{
     std::make_shared<Pattern::Twinkle>(),                // 4
     std::make_shared<Pattern::Comet>(),                  // 5
     std::make_shared<Pattern::MovingStrobe>(),           // 6
+    std::make_shared<Pattern::MovingStrobe>(0.7, 0.8),   // 7
+    std::make_shared<Pattern::Blackout>()                // 8
 };
 
 void setup() {

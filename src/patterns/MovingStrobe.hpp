@@ -6,7 +6,7 @@ namespace Pattern {
 class MovingStrobe : public AbstractPattern {
    public:
     MovingStrobe(double p_bigstrobe = 0.3, double p_pause = 0.5,
-                 double p_thin = 0.4);  // : AbstractPattern(), n_lights(columnCount_), n_leds(rowCount_),
+                 double p_thin = 0.1);  // : AbstractPattern(), n_lights(columnCount_), n_leds(rowCount_),
                                         // n(columnCount_ * rowCount_){};
 
     unsigned perform(std::vector<CRGB> &leds, CRGB color) override;

@@ -11,7 +11,7 @@ class SingleStrobeFlash : public AbstractPattern {
 
    private:
     std::shared_ptr<std::discrete_distribution<int>> probabilityDistribution_;
-    unsigned minOnDurationMs_{50};
+    unsigned minOnDurationMs_{10};
     unsigned maxOnDurationMs_{200};
     unsigned minOffDurationMs_{1000};
     unsigned maxOffDurationMs_{8000};

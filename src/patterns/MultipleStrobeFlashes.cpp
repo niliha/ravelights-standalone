@@ -12,7 +12,7 @@ unsigned MultipleStrobeFlashes::perform(std::vector<CRGB> &leds, CRGB color) {
     std::mt19937 random_number_generator(random_device());
 
     unsigned numOfColsToLightUp = (*probabilityDistribution_)(random_number_generator);
-    unsigned numOfFlashes = random(1, 15);
+    unsigned numOfFlashes = random(1, 20);
     unsigned columnIndexWithInvertedColor = random(0, columnCount_);
     for (unsigned i = 0; i < numOfFlashes; i++) {
         auto columnsToLightUp = sampleColumns(numOfColsToLightUp);
