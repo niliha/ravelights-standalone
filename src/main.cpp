@@ -1,11 +1,18 @@
-#include "Network.hpp"
-#include "Pattern.hpp"
 #include "RaveLights.hpp"
-#include "WifiCredentials.hpp"
-#include <esp_pthread.h>
+#include "network/Network.hpp"
+#include "network/WifiCredentials.hpp"
+#include "patterns/AbstractPattern.hpp"
+#include "patterns/Comet.hpp"
+#include "patterns/MovingStrobe.hpp"
+#include "patterns/MultipleStrobeFlashes.hpp"
+#include "patterns/RandomSegments.hpp"
+#include "patterns/RandomSequence.hpp"
+#include "patterns/SingleStrobeFlash.hpp"
+#include "patterns/Twinkle.hpp"
 
 #include <Arduino.h>
 #include <FastLED.h>
+#include <esp_pthread.h>
 
 // Must be known at compile time for FastLED
 const unsigned LED_ROW_COUNT = 144;

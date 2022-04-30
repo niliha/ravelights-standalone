@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ESPAsyncWebServer.h"
-#include "Pattern.hpp"
+#include "patterns/AbstractPattern.hpp"
 #include <FastLED.h>
 #include <atomic>
 #include <mutex>

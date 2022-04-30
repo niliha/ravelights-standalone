@@ -1,5 +1,6 @@
-#include "Arduino.h"
-#include "WiFi.h"
+#include "network/Network.hpp"
+#include <Arduino.h>
+#include <WiFi.h>
 
 namespace Network {
 bool connectToWifi(std::string wifiSsid, std::string wifiPassword) {
